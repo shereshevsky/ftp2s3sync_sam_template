@@ -1,12 +1,15 @@
 import sentry_sdk
 import loguru
+import asyncio
+import math
+import time
+from typing import Dict, AnyStr
+from settings import *
+
+from ftp import FTP
 from s3 import S3
 from ssm import SSM
-import asyncio
-from ftp import FTP
-import math
-import json
-from settings import *
+
 
 sentry_sdk.init(DEFAULT_SENTRY, traces_sample_rate=1.0)
 
@@ -15,7 +18,6 @@ LOG = loguru.logger
 LOG.debug("cold start")
 
 ssm = SSM()
-s3 = S3(DEFAULT_BUCKET)
 
 
 async def handler(event, context):
@@ -23,17 +25,21 @@ async def handler(event, context):
     parameters = ssm.list_namespace(DEFAULT_NAMESPACE)
 
     for parameter in parameters:
-        target = parameter.get("path")
-        source = json.loads(parameter.get("connection_string"))
-        await process_data_source(source, target)
+
+        target = parameter.get("s3_path")
+        source = parameter.get("connection_parameters")
+        s3 = S3(source.get("bucket"))
+        await process_data_source(s3, source, target)
 
 
-async def process_data_source(source: dict, target: str):
+async def process_data_source(s3, source: Dict, target: AnyStr):
+    start = time.time()
     ftp = FTP(**source)
-    ftp_files = ftp.list_dir(DEFAULT_FTP_DIR)
-    print(ftp_files)
+    ftp_files = ftp.list_dir(source.get("ftp_dir"))
+    LOG.debug(f"All ftp files - {ftp_files}")
     current_s3_files = s3.check_state(target)
-    print(current_s3_files)
+    LOG.debug(f"Files on S3 - {current_s3_files}")
+
     files_to_sync = []
     for file in ftp_files:
         if file not in current_s3_files:
@@ -48,25 +54,20 @@ async def process_data_source(source: dict, target: str):
                 LOG.debug(f"File identical to existing - {file.name}")
 
     for file in files_to_sync:
-        ftp_file = ftp.read_file(file.path)
-        chunk_count = int(math.ceil(file.size / float(DEFAULT_CHUNK_SIZE)))
-        multipart_handler = s3.create_multipart_upload(file.path)
-        parts = []
-        for i in range(chunk_count):
-            LOG.debug(f"Transferring chunk {i + 1} / {chunk_count} of {file.name}")
-            part = copy_chunk_to_s3(ftp_file, file.path, multipart_handler, i + 1)
-            parts.append(part)
+        await sync_file(s3, file, ftp, target)
 
-        parts_info = {'Parts': parts}
-        s3.complete_multipart_upload(key=file.path, upload_id=multipart_handler['UploadId'], multipart=parts_info)
-        LOG.debug(f'Finished syncing {file.name}.')
-        ftp_file.close()
+    s3.save_state(target, ftp_files)
+
+    LOG.debug(f"Finished processing {source} in {round(time.time() - start)} seconds.")
 
 
-def copy_chunk_to_s3(ftp_file, file_path, multipart_upload, part_number):
-    chunk = ftp_file.read(DEFAULT_CHUNK_SIZE)
-    part = s3.upload_part(file_path, part_number, multipart_upload['UploadId'], chunk)
-    return {'PartNumber': part_number, 'ETag': part['ETag']}
+async def sync_file(s3, file, ftp, target):
+    start = time.time()
+    ftp_file = ftp.read_file(file.path)
+    chunk_count = int(math.ceil(file.size / float(DEFAULT_CHUNK_SIZE)))
+    await s3.upload_multichunk_file(chunk_count, file, ftp_file, s3, target)
+    LOG.debug(f'Finished syncing {file.name} in {round(time.time() - start)} seconds')
+    ftp_file.close()
 
 
 if __name__ == '__main__':
