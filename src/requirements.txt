@@ -1,0 +1,5 @@
+sentry-sdk
+python-dotenv
+paramiko
+loguru
+boto3
