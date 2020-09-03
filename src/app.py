@@ -21,12 +21,13 @@ ssm = SSM()
 
 
 async def handler(event, context):
-    LOG.debug(event)
     parameters = ssm.list_namespace(DEFAULT_NAMESPACE)
 
-    for parameter in parameters:
+    LOG.debug(f"Handling data sources: {parameters}")
 
-        target = parameter.get("s3_path")
+    for parameter in parameters:
+        LOG.debug(f"Starting {parameter}")
+        target = parameter.get("s3_path")[1:]  # remove leading slash
         source = parameter.get("connection_parameters")
         s3 = S3(source.get("bucket"))
         await process_data_source(s3, source, target)
@@ -65,7 +66,7 @@ async def sync_file(s3, file, ftp, target):
     start = time.time()
     ftp_file = ftp.read_file(file.path)
     chunk_count = int(math.ceil(file.size / float(DEFAULT_CHUNK_SIZE)))
-    await s3.upload_multichunk_file(chunk_count, file, ftp_file, s3, target)
+    s3.upload_multichunk_file(chunk_count, file, ftp_file, target)
     LOG.debug(f'Finished syncing {file.name} in {round(time.time() - start)} seconds')
     ftp_file.close()
 
