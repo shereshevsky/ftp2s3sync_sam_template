@@ -1,11 +1,15 @@
 import boto3
 import json
 from typing import List, Dict, Union, AnyStr
+from settings import *
 
 
 class SSM:
     def __init__(self):
-        self.ssm = boto3.client('ssm')
+        if AWS_CONFIG:
+            self.ssm = boto3.client('ssm', config=AWS_CONFIG)
+        else:
+            self.ssm = boto3.client('ssm')
 
     def list_namespace(self, path: AnyStr) -> List[Dict[AnyStr, Union[AnyStr, Dict]]]:
         res = self.ssm.get_parameters_by_path(Path=path,

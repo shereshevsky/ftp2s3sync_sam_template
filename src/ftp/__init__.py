@@ -2,6 +2,7 @@ import paramiko
 import loguru
 from structures import File
 import socket
+
 LOG = loguru.logger
 
 
@@ -19,10 +20,13 @@ class FTP:
         self.client = paramiko.SSHClient()
         self.client.load_system_host_keys()
         try:
-            sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
             LOG.debug(f"connecting {host}:{port}")
-            sock.connect((host, int(port)))
-            transport = paramiko.Transport(sock=sock)
+            if "ipv6" in kwargs and kwargs.get("ipv6"):
+                sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+                sock.connect((host, int(port)))
+                transport = paramiko.Transport(sock=sock)
+            else:
+                transport = paramiko.Transport(host, int(port))
         except Exception as e:
             LOG.error(e)
             raise ConnectionError

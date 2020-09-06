@@ -11,7 +11,10 @@ LOG = logger
 class S3:
     def __init__(self, target_bucket):
         self.target_bucket = target_bucket
-        self.s3 = boto3.client('s3')
+        if AWS_CONFIG:
+            self.s3 = boto3.client('s3', config=AWS_CONFIG)
+        else:
+            self.s3 = boto3.client('s3')
 
     def check_state(self, target_path) -> List[File]:
         status_file = f"{target_path}/status.txt"
