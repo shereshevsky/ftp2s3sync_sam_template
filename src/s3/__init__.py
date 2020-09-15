@@ -14,7 +14,7 @@ class S3:
         # if AWS_CONFIG:
         #     self.s3 = boto3.client('s3', config=AWS_CONFIG)
         # else:
-        self.s3 = boto3.client('s3', region=DEFAULT_REGION)
+        self.s3 = boto3.client('s3', region_name=DEFAULT_REGION)
 
     def check_state(self, target_path) -> List[File]:
         status_file = f"{target_path}/status.txt"
