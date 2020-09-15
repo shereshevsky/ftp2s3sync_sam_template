@@ -1,3 +1,5 @@
+#! /usr/bin/python3
+
 import sentry_sdk
 import loguru
 import asyncio
@@ -9,7 +11,7 @@ from settings import *
 from ftp import FTP
 from s3 import S3
 from ssm import SSM
-
+from structures import File
 
 sentry_sdk.init(DEFAULT_SENTRY, traces_sample_rate=1.0)
 
@@ -20,7 +22,15 @@ LOG.debug("cold start")
 ssm = SSM()
 
 
-async def handler(event, context):
+async def handler(event: Dict, context: Dict) -> None:
+    """
+    Handle all the ftp sources found in the AWS SSM secure parameter store and save the data into the target S3 bucket.
+    Each source stored with the S3 prefix identical to SSM parameter prefix.
+    Will work with all the parameters found in the DEFAULT_NAMESPACE variable.
+    :param event:
+    :param context:
+    :return:
+    """
     parameters = ssm.list_namespace(DEFAULT_NAMESPACE)
 
     LOG.debug(f"Handling data sources: {parameters}")
@@ -33,7 +43,14 @@ async def handler(event, context):
         await process_data_source(s3, source, target)
 
 
-async def process_data_source(s3, source: Dict, target: AnyStr):
+async def process_data_source(s3, source: Dict, target: AnyStr) -> None:
+    """
+    Process single data source (sFTP server)
+    :param s3: s3 handler
+    :param source:  source parameters dictionary (host, port, user, ....)
+    :param target:  target S3 path
+    :return:
+    """
     start = time.time()
     ftp = FTP(**source)
     ftp_files = ftp.list_dir(source.get("ftp_dir"))
@@ -62,7 +79,15 @@ async def process_data_source(s3, source: Dict, target: AnyStr):
     LOG.debug(f"Finished processing {source} in {round(time.time() - start)} seconds.")
 
 
-async def sync_file(s3, file, ftp, target):
+async def sync_file(s3, file: File, ftp: FTP, target: AnyStr) -> None:
+    """
+    Sync single file
+    :param s3: S3 handler
+    :param file: File object
+    :param ftp: FTP connection
+    :param target: target S3 path
+    :return:
+    """
     start = time.time()
     ftp_file = ftp.read_file(file.path)
     chunk_count = int(math.ceil(file.size / float(DEFAULT_CHUNK_SIZE)))

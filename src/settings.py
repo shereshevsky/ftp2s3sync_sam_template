@@ -1,5 +1,6 @@
 # settings.py
 import os
+import boto3
 from dotenv import load_dotenv
 from botocore.config import Config
 
@@ -12,11 +13,15 @@ DEFAULT_SENTRY = os.getenv("DEFAULT_SENTRY")
 AWS_CONFIG = None
 
 if not os.getenv("AWS_ACCESS_KEY_ID"):
-    AWS_CONFIG = Config(
-        region_name=os.getenv("AWS_DEFAULT_REGION"),
-        signature_version='v4',
-        retries={
-            'max_attempts': 10,
-            'mode': 'standard'
-        }
-    )
+    session = boto3.Session(os.getenv("AWS_DEFAULT_REGION"))
+    credentials = session.get_credentials()
+    credentials = credentials.get_frozen_credentials()
+    AWS_CONFIG = credentials
+    # AWS_CONFIG = Config(
+    #     region_name=os.getenv("AWS_DEFAULT_REGION"),
+    #     signature_version='v4',
+    #     retries={
+    #         'max_attempts': 10,
+    #         'mode': 'standard'
+    #     }
+    # )
