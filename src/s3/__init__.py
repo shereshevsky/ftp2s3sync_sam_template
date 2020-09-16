@@ -1,4 +1,3 @@
-import boto3
 from botocore.exceptions import ClientError
 from typing import List, Dict
 from loguru import logger
@@ -11,9 +10,6 @@ LOG = logger
 class S3:
     def __init__(self, target_bucket):
         self.target_bucket = target_bucket
-        # if AWS_CONFIG:
-        #     self.s3 = boto3.client('s3', config=AWS_CONFIG)
-        # else:
         self.s3 = boto3.client('s3', region_name=DEFAULT_REGION)
 
     def check_state(self, target_path) -> List[File]:
