@@ -59,7 +59,7 @@ async def process_data_source(s3, source: Dict, target: AnyStr) -> None:
     LOG.debug(f"Files on S3 - {current_s3_files}")
 
     files_to_sync = []
-    for file in ftp_files:
+    for file in ftp_files[9:10]:
         if file not in current_s3_files:
             files_to_sync.append(file)
             LOG.debug(f"New file - {file.name}")

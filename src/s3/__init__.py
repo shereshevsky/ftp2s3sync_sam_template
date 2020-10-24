@@ -1,6 +1,9 @@
 from botocore.exceptions import ClientError
 from typing import List, Dict
 from loguru import logger
+from pathlib import Path
+from pyunpack import Archive
+
 from structures import File
 from settings import *
 
@@ -43,17 +46,36 @@ class S3:
         )
 
     def upload_multichunk_file(self, chunk_count, file, ftp_file, target):
-        key = f"{target}/{file.name}"
-        multipart_handler = self.s3.create_multipart_upload(Bucket=self.target_bucket, Key=key)
-        parts = [self.put_chunk(i, key, chunk_count, file, ftp_file, multipart_handler) for i in range(chunk_count)]
-        parts_info = {'Parts': parts}
-        self.s3.complete_multipart_upload(
-            Bucket=self.target_bucket, Key=f"{target}/{file.name}", UploadId=multipart_handler['UploadId'],
-            MultipartUpload=parts_info)
 
-    def put_chunk(self, i, key,  chunk_count, file, ftp_file, multipart_handler):
+        tmp_path = Path("/tmp" + file.path)
+        tmp_path.unlink(missing_ok=True)
+        tmp_path.parent.mkdir(parents=True, exist_ok=True)
+        tmp_out_path = tmp_path.with_suffix("")
+        tmp_out_path.mkdir(parents=True, exist_ok=True)
+        for i in range(chunk_count):
+            self.save_chunk(i, chunk_count, file, ftp_file, tmp_path)
+
+        archive = Archive(tmp_path)
+        archive.extractall(tmp_out_path)
+        for subfile in list(Path(tmp_path).glob("*")):
+            key = f"{target}/{file.name}/{subfile.name}"
+            multipart_handler = self.s3.create_multipart_upload(Bucket=self.target_bucket, Key=key)
+
+
+            # parts_info = {'Parts': parts}
+            # self.s3.complete_multipart_upload(
+            #     Bucket=self.target_bucket, Key=f"{target}/{file.name}", UploadId=multipart_handler['UploadId'],
+            #     MultipartUpload=parts_info)
+
+    def save_chunk(self, i, chunk_count, file, ftp_file, tmp_path):
         LOG.debug(f"Transferring chunk {i + 1} / {chunk_count} of {file.name}")
         chunk = ftp_file.read(DEFAULT_CHUNK_SIZE)
-        res = self.s3.upload_part(Bucket=self.target_bucket, Key=key, PartNumber=i + 1,
-                                  UploadId=multipart_handler['UploadId'], Body=chunk)
-        return {'PartNumber': i + 1, 'ETag': res['ETag']}
+
+        with open(tmp_path, "ba+") as f:
+            f.write(chunk)
+
+
+        # res = self.s3.upload_part(Bucket=self.target_bucket, Key=key, PartNumber=i + 1,
+        #                           UploadId=multipart_handler['UploadId'], Body=chunk)
+        # return {'PartNumber': i + 1, 'ETag': res['ETag']}
+        return

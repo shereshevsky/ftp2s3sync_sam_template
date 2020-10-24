@@ -3,3 +3,5 @@ python-dotenv
 paramiko
 loguru
 boto3
+pyunpack
+patool
