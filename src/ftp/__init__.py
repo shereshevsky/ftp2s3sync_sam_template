@@ -3,8 +3,6 @@ import loguru
 from structures import File
 import socket
 
-LOG = loguru.logger
-
 
 class ConnectionError(Exception):
     pass
@@ -16,7 +14,7 @@ class AuthenticationError(Exception):
 
 class FTP:
 
-    def __init__(self, host, port, user, pswd, **kwargs):
+    def __init__(self, host, port, user, pswd, logger, **kwargs):
         self.client = paramiko.SSHClient()
         self.client.load_system_host_keys()
         self.host = host
@@ -24,11 +22,12 @@ class FTP:
         self.user = user
         self.pswd = pswd
         self.kwargs =kwargs
+        self.logger = logger
         self.connect()
 
     def connect(self):
         try:
-            LOG.debug(f"connecting {self.host}:{self.port}")
+            self.logger.debug(f"connecting {self.host}:{self.port}")
             if "ipv6" in self.kwargs and self.kwargs.get("ipv6"):
                 sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
                 sock.connect((self.host, int(self.port)))
@@ -36,12 +35,12 @@ class FTP:
             else:
                 self.transport = paramiko.Transport(self.host, int(self.port))
         except Exception as e:
-            LOG.error(e)
+            self.logger.error(e)
             raise ConnectionError
         try:
             self.transport.connect(username=self.user, password=self.pswd)
         except Exception as e:
-            LOG.error(e)
+            self.logger.error(e)
             raise AuthenticationError
         self.connection = paramiko.SFTPClient.from_transport(self.transport)
 

@@ -1,19 +1,17 @@
-from botocore.exceptions import ClientError
-from typing import List, Dict
-from loguru import logger
+from io import BytesIO
+from typing import List
 from pathlib import Path
 from zipfile import ZipFile
-from io import BytesIO
+from botocore.exceptions import ClientError
 
-from structures import File
 from settings import *
-
-LOG = logger
+from structures import File
 
 
 class S3:
-    def __init__(self, target_bucket):
+    def __init__(self, target_bucket, logger):
         self.target_bucket = target_bucket
+        self.logger = logger
         self.s3 = boto3.client('s3', region_name=DEFAULT_REGION)
 
     def check_state(self, target_path) -> List[File]:
@@ -22,7 +20,7 @@ class S3:
             status = self.s3.get_object(Bucket=self.target_bucket, Key=status_file)["Body"].read().decode()
         except ClientError as ex:
             if ex.response['Error']['Code'] == 'NoSuchKey':
-                LOG.info(f"Status file not found - {status_file}")
+                self.logger.info(f"Status file not found - {status_file}")
                 return []
             else:
                 raise ex
@@ -46,20 +44,20 @@ class S3:
             MultipartUpload=multipart
         )
 
-    def upload_multichunk_file(self, chunk_count, file, ftp_file, target):
+    def decode_and_upload(self, chunk_count, file, ftp_file, target):
 
         tmp_path = Path("/tmp" + file.path)
         tmp_path.unlink(missing_ok=True)
         tmp_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # for i in range(chunk_count):
-        #     self.save_chunk(i, chunk_count, file, ftp_file, tmp_path)
+        for i in range(chunk_count):
+            self.save_chunk(i, chunk_count, file, ftp_file, tmp_path)
 
         tmp_out_path = tmp_path.with_suffix("")
         tmp_out_path.mkdir(parents=True, exist_ok=True)
 
-        # archive = ZipFile(open(tmp_path, "rb"))
-        # archive.extractall(tmp_out_path)
+        archive = ZipFile(open(tmp_path, "rb"))
+        archive.extractall(tmp_out_path)
 
         for subfile in list(Path(tmp_out_path).glob("*/*")):
             key = f"{target}/{file.name.split('.')[0]}/{subfile.name}"
@@ -81,7 +79,7 @@ class S3:
                 Bucket=self.target_bucket, Key=key, UploadId=upload_id, MultipartUpload=parts_info)
 
     def save_chunk(self, i, chunk_count, file, ftp_file, tmp_path):
-        LOG.debug(f"Transferring chunk {i + 1} / {chunk_count} of {file.name}")
+        self.logger.debug(f"Transferring chunk {i + 1} / {chunk_count} of {file.name}")
         chunk = ftp_file.read(DEFAULT_CHUNK_SIZE)
 
         with open(tmp_path, "ba+") as f:

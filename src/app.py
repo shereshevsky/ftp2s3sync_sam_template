@@ -1,23 +1,25 @@
 #! /usr/bin/python3
 
-import sentry_sdk
-import loguru
-import asyncio
 import math
 import time
+import asyncio
+import sentry_sdk
+import watchtower, logging
 from typing import Dict, AnyStr
-from settings import *
 
-from ftp import FTP
 from s3 import S3
+from ftp import FTP
 from ssm import SSM
+from settings import *
 from structures import File
 
 sentry_sdk.init(DEFAULT_SENTRY, traces_sample_rate=1.0)
 
-LOG = loguru.logger
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("ftp2s3")
+logger.addHandler(watchtower.CloudWatchLogHandler())
 
-LOG.debug("cold start")
+logger.info("cold start")
 
 ssm = SSM()
 
@@ -33,13 +35,13 @@ async def handler(event: Dict, context: Dict) -> None:
     """
     parameters = ssm.list_namespace(DEFAULT_NAMESPACE)
 
-    LOG.debug(f"Handling data sources: {parameters}")
+    logger.info(f"Handling data sources: {parameters}")
 
     for parameter in parameters:
-        LOG.debug(f"Starting {parameter}")
+        logger.debug(f"Starting {parameter}")
         target = parameter.get("s3_path")[1:]  # remove leading slash
         source = parameter.get("connection_parameters")
-        s3 = S3(source.get("bucket"))
+        s3 = S3(source.get("bucket"), logger=logger)
         await process_data_source(s3, source, target)
 
 
@@ -52,31 +54,31 @@ async def process_data_source(s3, source: Dict, target: AnyStr) -> None:
     :return:
     """
     start = time.time()
-    ftp = FTP(**source)
+    ftp = FTP(logger=logger, **source)
     ftp_files = ftp.list_dir(source.get("ftp_dir"))
-    LOG.debug(f"All ftp files - {ftp_files}")
+    logger.debug(f"All ftp files - {ftp_files}")
     current_s3_files = s3.check_state(target)
-    LOG.debug(f"Files on S3 - {current_s3_files}")
+    logger.debug(f"Files on S3 - {current_s3_files}")
 
     files_to_sync = []
     for file in ftp_files:
         if file not in current_s3_files:
             files_to_sync.append(file)
-            LOG.debug(f"New file - {file.name}")
+            logger.debug(f"New file - {file.name}")
         else:
             if file.size > current_s3_files[current_s3_files.index(file)].size \
                     or file.mdate > current_s3_files[current_s3_files.index(file)].mdate:
                 files_to_sync.append(file)
-                LOG.debug(f"File with changed timestamp/size - {file.name}")
+                logger.debug(f"File with changed timestamp/size - {file.name}")
             else:
-                LOG.debug(f"File identical to existing - {file.name}")
+                logger.debug(f"File identical to existing - {file.name}")
 
     for file in files_to_sync:
         await sync_file(s3, file, ftp, target)
 
     s3.save_state(target, ftp_files)
 
-    LOG.debug(f"Finished processing {source} in {round(time.time() - start)} seconds.")
+    logger.debug(f"Finished processing {source} in {round(time.time() - start)} seconds.")
 
 
 async def sync_file(s3, file: File, ftp: FTP, target: AnyStr) -> None:
@@ -91,8 +93,8 @@ async def sync_file(s3, file: File, ftp: FTP, target: AnyStr) -> None:
     start = time.time()
     ftp_file = ftp.read_file(file.path)
     chunk_count = int(math.ceil(file.size / float(DEFAULT_CHUNK_SIZE)))
-    s3.upload_multichunk_file(chunk_count, file, ftp_file, target)
-    LOG.debug(f'Finished syncing {file.name} in {round(time.time() - start)} seconds')
+    s3.decode_and_upload(chunk_count, file, ftp_file, target)
+    logger.debug(f'Finished syncing {file.name} in {round(time.time() - start)} seconds')
     ftp_file.close()
 
 
