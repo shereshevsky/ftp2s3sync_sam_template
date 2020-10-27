@@ -2,9 +2,9 @@
 
 import math
 import time
+import shutil
 import asyncio
 import sentry_sdk
-from pathlib import Path
 import watchtower, logging
 from typing import Dict, AnyStr
 
@@ -92,13 +92,21 @@ async def sync_file(s3, file: File, ftp: FTP, target: AnyStr) -> None:
     :return:
     """
     start = time.time()
-    for file in Path("/tmp/Home").glob("*"):
-        file.unlink(missing_ok=True)
+
+    await clean_temp()
+
     ftp_file = ftp.read_file(file.path)
     chunk_count = int(math.ceil(file.size / float(DEFAULT_CHUNK_SIZE)))
     s3.decode_and_upload(chunk_count, file, ftp_file, target)
     logger.info(f'Finished syncing {file.name} in {round(time.time() - start)} seconds')
     ftp_file.close()
+
+
+async def clean_temp():
+    try:
+        shutil.rmtree(TMP_PREFIX, ignore_errors=True)
+    except OSError as e:
+        logger.exception(e)
 
 
 if __name__ == '__main__':

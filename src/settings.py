@@ -10,6 +10,7 @@ DEFAULT_CHUNK_SIZE = int(os.getenv("DEFAULT_CHUNK_SIZE", 6291456))
 DEFAULT_SENTRY = os.getenv("DEFAULT_SENTRY")
 DEFAULT_REGION = os.getenv("AWS_DEFAULT_REGION", "eu-central-1")
 AWS_CONFIG = None
+TMP_PREFIX = "/tmp/ftp2s3"
 
 if not os.getenv("AWS_ACCESS_KEY_ID"):
     session = boto3.Session(DEFAULT_REGION)

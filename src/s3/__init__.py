@@ -46,7 +46,7 @@ class S3:
 
     def decode_and_upload(self, chunk_count, file, ftp_file, target):
 
-        tmp_path = Path("/tmp" + file.path)
+        tmp_path = Path(TMP_PREFIX + file.path)
         tmp_path.unlink(missing_ok=True)
         tmp_path.parent.mkdir(parents=True, exist_ok=True)
 
