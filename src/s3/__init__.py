@@ -79,7 +79,7 @@ class S3:
                 Bucket=self.target_bucket, Key=key, UploadId=upload_id, MultipartUpload=parts_info)
 
     def save_chunk(self, i, chunk_count, file, ftp_file, tmp_path):
-        self.logger.debug(f"Transferring chunk {i + 1} / {chunk_count} of {file.name}")
+        self.logger.info(f"Transferring chunk {i + 1} / {chunk_count} of {file.name}")
         chunk = ftp_file.read(DEFAULT_CHUNK_SIZE)
 
         with open(tmp_path, "ba+") as f:

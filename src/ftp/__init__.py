@@ -1,5 +1,4 @@
 import paramiko
-import loguru
 from structures import File
 import socket
 
@@ -27,7 +26,7 @@ class FTP:
 
     def connect(self):
         try:
-            self.logger.debug(f"connecting {self.host}:{self.port}")
+            self.logger.info(f"connecting {self.host}:{self.port}")
             if "ipv6" in self.kwargs and self.kwargs.get("ipv6"):
                 sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
                 sock.connect((self.host, int(self.port)))
