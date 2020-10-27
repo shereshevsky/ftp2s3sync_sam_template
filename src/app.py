@@ -38,7 +38,7 @@ async def handler(event: Dict, context: Dict) -> None:
     logger.info(f"Handling data sources: {parameters}")
 
     for parameter in parameters:
-        logger.debug(f"Starting {parameter}")
+        logger.info(f"Starting {parameter}")
         target = parameter.get("s3_path")[1:]  # remove leading slash
         source = parameter.get("connection_parameters")
         s3 = S3(source.get("bucket"), logger=logger)
@@ -56,29 +56,29 @@ async def process_data_source(s3, source: Dict, target: AnyStr) -> None:
     start = time.time()
     ftp = FTP(logger=logger, **source)
     ftp_files = ftp.list_dir(source.get("ftp_dir"))
-    logger.debug(f"All ftp files - {ftp_files}")
+    logger.info(f"All ftp files - {ftp_files}")
     current_s3_files = s3.check_state(target)
-    logger.debug(f"Files on S3 - {current_s3_files}")
+    logger.info(f"Files on S3 - {current_s3_files}")
 
     files_to_sync = []
     for file in ftp_files:
         if file not in current_s3_files:
             files_to_sync.append(file)
-            logger.debug(f"New file - {file.name}")
+            logger.info(f"New file - {file.name}")
         else:
             if file.size > current_s3_files[current_s3_files.index(file)].size \
                     or file.mdate > current_s3_files[current_s3_files.index(file)].mdate:
                 files_to_sync.append(file)
-                logger.debug(f"File with changed timestamp/size - {file.name}")
+                logger.info(f"File with changed timestamp/size - {file.name}")
             else:
-                logger.debug(f"File identical to existing - {file.name}")
+                logger.info(f"File identical to existing - {file.name}")
 
     for file in files_to_sync:
         await sync_file(s3, file, ftp, target)
 
     s3.save_state(target, ftp_files)
 
-    logger.debug(f"Finished processing {source} in {round(time.time() - start)} seconds.")
+    logger.info(f"Finished processing {source} in {round(time.time() - start)} seconds.")
 
 
 async def sync_file(s3, file: File, ftp: FTP, target: AnyStr) -> None:
@@ -94,7 +94,7 @@ async def sync_file(s3, file: File, ftp: FTP, target: AnyStr) -> None:
     ftp_file = ftp.read_file(file.path)
     chunk_count = int(math.ceil(file.size / float(DEFAULT_CHUNK_SIZE)))
     s3.decode_and_upload(chunk_count, file, ftp_file, target)
-    logger.debug(f'Finished syncing {file.name} in {round(time.time() - start)} seconds')
+    logger.info(f'Finished syncing {file.name} in {round(time.time() - start)} seconds')
     ftp_file.close()
 
 
