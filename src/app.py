@@ -36,10 +36,10 @@ async def handler(event: Dict, context: Dict) -> None:
     """
     parameters = ssm.list_namespace(DEFAULT_NAMESPACE)
 
-    logger.info(f"Handling data sources: {parameters}")
+    logger.info(f"Handling data sources: {DEFAULT_NAMESPACE}")
 
     for parameter in parameters:
-        logger.info(f"Starting {parameter}")
+        logger.info(f"Starting {parameter.get('s3_path')}")
         target = parameter.get("s3_path")[1:]  # remove leading slash
         source = parameter.get("connection_parameters")
         s3 = S3(source.get("bucket"), logger=logger)

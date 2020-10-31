@@ -6,3 +6,4 @@ boto3
 pyunpack
 patool
 watchtower
+pandas

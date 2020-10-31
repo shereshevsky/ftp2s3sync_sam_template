@@ -1,3 +1,5 @@
+import csv
+import pandas as pd
 from io import BytesIO
 from typing import List
 from pathlib import Path
@@ -60,7 +62,15 @@ class S3:
         archive.extractall(tmp_out_path)
 
         for subfile in list(Path(tmp_out_path).glob("*/*")):
-            key = f"{target}/{file.name.split('.')[0]}/{subfile.name}"
+            zip_folder = file.name.split('.')[0]
+
+            if subfile.name == "Geographies.txt" and zip_folder == "ImsDataKaz":
+                df = pd.read_csv(subfile, delimiter=";", )
+                dff = df[["GeographyID", "GeographyName", "ParentID"]]
+                dff.columns = ["GeographyID","GeographyEnglish","ParentID"]
+                dff.to_csv(subfile, index=False, quoting=csv.QUOTE_ALL, sep=";")
+
+            key = f"{target}/{zip_folder}/{subfile.name}"
             multipart_handler = self.s3.create_multipart_upload(Bucket=self.target_bucket, Key=key)
             upload_id = multipart_handler['UploadId']
             binary_stream = BytesIO(subfile.read_bytes())
