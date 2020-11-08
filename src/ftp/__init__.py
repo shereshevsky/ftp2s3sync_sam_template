@@ -1,6 +1,8 @@
 import paramiko
 from structures import File
 import socket
+from ftplib import FTP as oFTP
+from io import BytesIO
 
 
 class ConnectionError(Exception):
@@ -9,6 +11,35 @@ class ConnectionError(Exception):
 
 class AuthenticationError(Exception):
     pass
+
+
+class OldFTP:
+    def __init__(self, host, port, user, pswd, logger, **kwargs):
+        self.host = host
+        self.port = port
+        self.user = user
+        self.pswd = pswd
+        self.kwargs =kwargs
+        self.logger = logger
+        self.client = self.connect()
+
+    def connect(self):
+        self.client = oFTP(self.host)
+        self.client.login(self.user, self.pswd)
+
+    def list_dir(self, base_dir):
+        res = []
+        for n, attr in self.client.mlsd(base_dir):
+            if n.endswith(".zip"):
+                res.append(File(n, int(attr["modify"]), int(attr["size"]), f"{base_dir}/{n}"))
+        return res
+
+    def read_file(self, file_path):
+        self.connect()
+        buffer = BytesIO()
+        self.client.retrbinary(f"RETR {file_path.split('/')[-1]}", buffer.write)
+        buffer.seek(0)
+        return buffer
 
 
 class FTP:

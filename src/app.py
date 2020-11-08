@@ -9,7 +9,7 @@ import watchtower, logging
 from typing import Dict, AnyStr
 
 from s3 import S3
-from ftp import FTP, ConnectionError
+from ftp import FTP, ConnectionError, OldFTP
 from ssm import SSM
 from settings import *
 from structures import File
@@ -55,13 +55,19 @@ async def process_data_source(s3, source: Dict, target: AnyStr) -> None:
     :return:
     """
     start = time.time()
-    try:
-        ftp = FTP(logger=logger, **source)
-    except ConnectionError:
-        return
+
+    if source.get("type") == "sftp":
+        try:
+            ftp = FTP(logger=logger, **source)
+        except ConnectionError:
+            return
+    else:
+        try:
+            ftp = OldFTP(logger=logger, **source)
+        except ConnectionError:
+            return
 
     ftp_files = ftp.list_dir(source.get("ftp_dir"))
-
 
     logger.info(f"All ftp files - {ftp_files}")
     current_s3_files = s3.check_state(target)
