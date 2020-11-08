@@ -15,13 +15,14 @@ class AuthenticationError(Exception):
 
 class OldFTP:
     def __init__(self, host, port, user, pswd, logger, **kwargs):
+        self.client = None
         self.host = host
         self.port = port
         self.user = user
         self.pswd = pswd
         self.kwargs =kwargs
         self.logger = logger
-        self.client = self.connect()
+        self.connect()
 
     def connect(self):
         self.client = oFTP(self.host)
