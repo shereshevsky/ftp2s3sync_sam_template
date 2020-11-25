@@ -2,6 +2,7 @@ import paramiko
 import loguru
 from structures import File
 import socket
+import retry
 
 LOG = loguru.logger
 
@@ -19,6 +20,10 @@ class FTP:
     def __init__(self, host, port, user, pswd, **kwargs):
         self.client = paramiko.SSHClient()
         self.client.load_system_host_keys()
+        self.connection = self.connect(host, kwargs, port, pswd, user)
+
+    @retry.retry(tries=5, delay=20, logger=LOG)
+    def connect(self, host, kwargs, port, pswd, user):
         try:
             LOG.debug(f"connecting {host}:{port}")
             if "ipv6" in kwargs and kwargs.get("ipv6"):
@@ -35,7 +40,7 @@ class FTP:
         except Exception as e:
             LOG.error(e)
             raise AuthenticationError
-        self.connection = paramiko.SFTPClient.from_transport(transport)
+        return paramiko.SFTPClient.from_transport(transport)
 
     def list_dir(self, base_dir):
         res = self.connection.listdir_attr(base_dir)
