@@ -91,7 +91,7 @@ async def process_data_source(s3, source: Dict, target: AnyStr) -> None:
 
     s3.save_state(target, ftp_files)
 
-    logger.info(f"Finished processing {source} in {round(time.time() - start)} seconds.")
+    logger.info(f"Finished processing in {round(time.time() - start)} seconds.")
 
 
 async def sync_file(s3, file: File, ftp: FTP, target: AnyStr) -> None:
@@ -109,7 +109,7 @@ async def sync_file(s3, file: File, ftp: FTP, target: AnyStr) -> None:
 
     ftp_file = ftp.read_file(file.path)
     chunk_count = int(math.ceil(file.size / float(DEFAULT_CHUNK_SIZE)))
-    uploaded_subfiles = s3.decode_and_upload(chunk_count, file, ftp_file, target)
+    uploaded_subfiles = s3.decode_and_upload(chunk_count or 1, file, ftp_file, target)
     logger.info(f"Uploaded subfiles: {uploaded_subfiles}")
     logger.info(f'Finished syncing {file.name} in {round(time.time() - start)} seconds')
     ftp_file.close()

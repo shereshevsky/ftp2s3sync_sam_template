@@ -63,8 +63,10 @@ class S3:
         archive = ZipFile(open(tmp_path, "rb"))
         archive.extractall(tmp_out_path)
 
-        for subfile in list(Path(tmp_out_path).glob("*/*")):
+        for subfile in list(Path(tmp_out_path).glob("*.txt")) + list(Path(tmp_out_path).glob("*/*")):
             zip_folder = file.name.split('.')[0]
+
+            self.logger.warning(f"Unploading target={target}, zip_folder={zip_folder}, subfile={subfile}")
 
             if subfile.name == "Geographies.txt" and zip_folder == "ImsDataKaz":
                 df = pd.read_csv(subfile, delimiter=";", )
