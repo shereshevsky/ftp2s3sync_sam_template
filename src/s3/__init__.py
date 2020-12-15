@@ -4,6 +4,7 @@ from io import BytesIO
 from typing import List
 from pathlib import Path
 from zipfile import ZipFile
+from datetime import datetime
 from botocore.exceptions import ClientError
 
 from settings import *
@@ -48,6 +49,7 @@ class S3:
 
     def decode_and_upload(self, chunk_count, file, ftp_file, target):
 
+        uploaded_files = []
         tmp_path = Path(TMP_PREFIX + file.path)
         tmp_path.unlink(missing_ok=True)
         tmp_path.parent.mkdir(parents=True, exist_ok=True)
@@ -88,6 +90,9 @@ class S3:
             self.s3.complete_multipart_upload(
                 Bucket=self.target_bucket, Key=key, UploadId=upload_id, MultipartUpload=parts_info)
 
+            uploaded_files.append([subfile, datetime.utcnow().isoformat(), key])
+        return uploaded_files
+
     def save_chunk(self, i, chunk_count, file, ftp_file, tmp_path):
         self.logger.info(f"Transferring chunk {i + 1} / {chunk_count} of {file.name}")
         chunk = ftp_file.read(DEFAULT_CHUNK_SIZE)
@@ -96,3 +101,7 @@ class S3:
             f.write(chunk)
 
         return
+
+    def save_subfiles_status(self, target, uploaded_subfiles):
+        self.s3.put_object(Bucket=self.target_bucket, Key=f"{target}/subfiles_status.txt",
+                           Body="\n".join([",".join(i) for i in uploaded_subfiles]))

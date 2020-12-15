@@ -109,10 +109,11 @@ async def sync_file(s3, file: File, ftp: FTP, target: AnyStr) -> None:
 
     ftp_file = ftp.read_file(file.path)
     chunk_count = int(math.ceil(file.size / float(DEFAULT_CHUNK_SIZE)))
-    s3.decode_and_upload(chunk_count, file, ftp_file, target)
+    uploaded_subfiles = s3.decode_and_upload(chunk_count, file, ftp_file, target)
+    logger.info(f"Uploaded subfiles: {uploaded_subfiles}")
     logger.info(f'Finished syncing {file.name} in {round(time.time() - start)} seconds')
     ftp_file.close()
-
+    s3.save_subfiles_status(target, uploaded_subfiles)
 
 async def clean_temp():
     try:
