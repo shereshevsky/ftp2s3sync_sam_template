@@ -92,7 +92,7 @@ class S3:
             self.s3.complete_multipart_upload(
                 Bucket=self.target_bucket, Key=key, UploadId=upload_id, MultipartUpload=parts_info)
 
-            uploaded_files.append([str(subfile), datetime.utcnow().isoformat(), key])
+            uploaded_files.append([datetime.utcnow().isoformat(), key])
         return uploaded_files
 
     def save_chunk(self, i, chunk_count, file, ftp_file, tmp_path):
