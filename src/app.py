@@ -6,6 +6,7 @@ import shutil
 import asyncio
 import sentry_sdk
 import watchtower, logging
+from datetime import datetime
 from typing import Dict, AnyStr
 
 from s3 import S3
@@ -38,11 +39,13 @@ async def handler(event: Dict, context: Dict) -> None:
 
     logger.info(f"Handling data sources: {DEFAULT_NAMESPACE}")
 
+    execution_time = datetime.utcnow().isoformat()
+
     for parameter in parameters:
         logger.info(f"Starting {parameter.get('s3_path')}")
         target = parameter.get("s3_path")[1:]  # remove leading slash
         source = parameter.get("connection_parameters")
-        s3 = S3(source.get("bucket"), logger=logger)
+        s3 = S3(source.get("bucket"), logger=logger, execution_time=execution_time)
         await process_data_source(s3, source, target)
 
 

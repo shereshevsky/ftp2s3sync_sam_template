@@ -12,9 +12,10 @@ from structures import File
 
 
 class S3:
-    def __init__(self, target_bucket, logger):
+    def __init__(self, target_bucket, logger, execution_time):
         self.target_bucket = target_bucket
         self.logger = logger
+        self.execution_time = execution_time
         self.s3 = boto3.client('s3', region_name=DEFAULT_REGION)
 
     def check_state(self, target_path) -> List[File]:
@@ -32,7 +33,8 @@ class S3:
 
     def save_state(self, target_path, ftp_files):
         self.s3.put_object(Bucket=self.target_bucket, Key=f"{target_path}/status.txt",
-                           Body="\n".join([f"{i.name},{i.mdate},{i.size},{i.path}" for i in ftp_files])
+                           Body="\n".join([f"{i.name},{i.mdate},{i.size},{i.path},{self.execution_time}"
+                                           for i in ftp_files])
                            )
 
     def head_object(self, file_path):
@@ -106,4 +108,4 @@ class S3:
 
     def save_subfiles_status(self, target, uploaded_subfiles):
         self.s3.put_object(Bucket=self.target_bucket, Key=f"{target}/subfiles_status.txt",
-                           Body="\n".join([",".join(i) for i in uploaded_subfiles]))
+                           Body="\n".join([(",".join(i))+f",{self.execution_time}" for i in uploaded_subfiles]))
