@@ -92,6 +92,7 @@ async def process_data_source(s3, source: Dict, target: AnyStr) -> None:
     for file in files_to_sync:
         await sync_file(s3, file, ftp, target)
 
+    s3.log_synced_files(target, files_to_sync)
     s3.save_state(target, ftp_files)
 
     logger.info(f"Finished processing in {round(time.time() - start)} seconds.")
@@ -117,6 +118,7 @@ async def sync_file(s3, file: File, ftp: FTP, target: AnyStr) -> None:
     logger.info(f'Finished syncing {file.name} in {round(time.time() - start)} seconds')
     ftp_file.close()
     s3.save_subfiles_status(target, uploaded_subfiles)
+
 
 async def clean_temp():
     try:

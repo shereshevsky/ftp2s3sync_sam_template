@@ -37,6 +37,12 @@ class S3:
                                            for i in ftp_files])
                            )
 
+    def log_synced_files(self, target_path, files: List[File]):
+        self.s3.put_object(Bucket=self.target_bucket, Key=f"{target_path}/synced_status.txt",
+                           Body="\n".join([f"{i.name},{i.mdate},{i.size},{i.path},{self.execution_time}"
+                                           for i in files])
+                           )
+
     def head_object(self, file_path):
         head = self.s3.head_object(Bucket=self.target_bucket, Key=file_path)
         return head
