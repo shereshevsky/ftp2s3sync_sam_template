@@ -29,6 +29,8 @@ async def handler(event, context):
         LOG.debug(f"Starting {parameter}")
         target = parameter.get("s3_path")[1:]  # remove leading slash
         source = parameter.get("connection_parameters")
+        if not source:
+            continue
         s3 = S3(source.get("bucket"))
         await process_data_source(s3, source, target)
 
