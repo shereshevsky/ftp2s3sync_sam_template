@@ -68,7 +68,8 @@ async def sync_file(s3, file, ftp, target):
     start = time.time()
     ftp_file = ftp.read_file(file.path)
     chunk_count = int(math.ceil(file.size / float(DEFAULT_CHUNK_SIZE)))
-    s3.upload_multichunk_file(chunk_count, file, ftp_file, target)
+    if chunk_count:
+        s3.upload_multichunk_file(chunk_count, file, ftp_file, target)
     LOG.debug(f'Finished syncing {file.name} in {round(time.time() - start)} seconds')
     ftp_file.close()
 
