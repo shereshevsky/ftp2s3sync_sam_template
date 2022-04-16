@@ -44,7 +44,7 @@ class FTP:
 
     def list_dir(self, base_dir):
         res = self.connection.listdir_attr(base_dir)
-        res = [File(i.filename, i.st_mtime, i.st_size, f"{base_dir}/{i.filename}") for i in res]
+        res = [File(i.filename, i.st_mtime, i.st_size, f"{base_dir}/{i.filename}") for i in res if i.filename.endswith('.txt') or i.filename.endswith('.zip')]
         return res
 
     def read_file(self, file_path):
