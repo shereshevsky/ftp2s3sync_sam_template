@@ -15,7 +15,7 @@ AWS_DEFAULT_REGION="us-west-2"
 ```json
 {"bucket": "my-bucket", 
 "ftp_dir": "x/y/z",
-"host": "2201:95c0:2055:101f:1::1", 
+"host": "xxxx:xxxx:2055:101f:1::1", 
 "port": "22",
 "user": "my_user", 
 "pswd": "pa$$w0rd", 
