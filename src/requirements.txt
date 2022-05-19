@@ -3,3 +3,4 @@ python-dotenv
 paramiko
 loguru
 boto3
+retry
